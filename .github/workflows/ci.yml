@@ -7,6 +7,13 @@ on:
     branches: [ main, master, develop ]
   workflow_dispatch:  # Allows manual trigger
 
+# Add permissions for GitHub Pages deployment
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+  pull-requests: write
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -74,14 +81,6 @@ jobs:
         path: allure-report/
         retention-days: 30
         
-    - name: Deploy Allure Report to GitHub Pages
-      if: github.ref == 'refs/heads/main' && matrix.node-version == '20.x'
-      uses: peaceiris/actions-gh-pages@v3
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: allure-report
-        publish_branch: gh-pages
-        
     - name: Comment PR with Allure Report Link
       if: github.event_name == 'pull_request' && matrix.node-version == '20.x'
       uses: actions/github-script@v6
@@ -118,9 +117,45 @@ jobs:
             });
           }
         
-  notify:
+  # Separate job for GitHub Pages deployment
+  deploy-pages:
     runs-on: ubuntu-latest
     needs: test
+    if: github.ref == 'refs/heads/main'
+    
+    # Grant GITHUB_TOKEN the permissions required to make a Pages deployment
+    permissions:
+      pages: write
+      id-token: write
+      contents: read
+    
+    # Deploy to the github-pages environment
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    
+    steps:
+    - name: Download Allure Report Artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: allure-report-node-20.x
+        path: allure-report
+        
+    - name: Setup Pages
+      uses: actions/configure-pages@v4
+      
+    - name: Upload artifact for Pages
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: allure-report
+        
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4
+        
+  notify:
+    runs-on: ubuntu-latest
+    needs: [test, deploy-pages]
     if: always()
     
     steps:
@@ -129,7 +164,12 @@ jobs:
       run: |
         echo "✅ All tests passed successfully!"
         echo "📊 Allure reports have been generated and uploaded as artifacts"
-        echo "🌐 Live report will be available at: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}"
+        if [ "${{ needs.deploy-pages.result }}" == "success" ]; then
+          echo "🌐 Live report deployed to GitHub Pages successfully!"
+          echo "🔗 View report at: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}"
+        else
+          echo "📁 Download Allure report artifacts from the Actions tab"
+        fi
       
     - name: Notify Failure
       if: needs.test.result == 'failure'
