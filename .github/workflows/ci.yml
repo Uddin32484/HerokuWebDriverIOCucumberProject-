@@ -51,13 +51,28 @@ jobs:
           screenshots/
         retention-days: 30
         
+    - name: Install Allure CLI
+      if: always()
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y default-jre
+        curl -o allure-2.24.0.tgz -L https://github.com/allure-framework/allure2/releases/download/2.24.0/allure-2.24.0.tgz
+        tar -zxf allure-2.24.0.tgz
+        sudo mv allure-2.24.0 /opt/allure
+        sudo ln -s /opt/allure/bin/allure /usr/bin/allure
+        
     - name: Generate Allure Report
-      uses: simple-elf/allure-report-action@master
+      if: always()
+      run: |
+        allure generate allure-results --clean --output allure-report
+        
+    - name: Upload Allure Report as Artifact
+      uses: actions/upload-artifact@v4
       if: always()
       with:
-        allure_results: allure-results
-        allure_report: allure-report
-        gh_pages: gh-pages
+        name: allure-report-node-${{ matrix.node-version }}
+        path: allure-report/
+        retention-days: 30
         
     - name: Deploy Allure Report to GitHub Pages
       if: github.ref == 'refs/heads/main' && matrix.node-version == '20.x'
@@ -67,6 +82,42 @@ jobs:
         publish_dir: allure-report
         publish_branch: gh-pages
         
+    - name: Comment PR with Allure Report Link
+      if: github.event_name == 'pull_request' && matrix.node-version == '20.x'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          const path = require('path');
+          
+          // Check if allure report was generated
+          if (fs.existsSync('allure-report')) {
+            const reportUrl = `https://${context.repo.owner}.github.io/${context.repo.repo}`;
+            const artifactUrl = `${context.payload.repository.html_url}/actions/runs/${context.runId}`;
+            
+            const comment = `## 📊 Test Results
+            
+            ### Allure Report
+            - 🌐 **Live Report**: [View Allure Report](${reportUrl}) (available after merge to main)
+            - 📁 **Artifact**: [Download Report Artifact](${artifactUrl})
+            
+            ### Test Summary
+            The tests have completed. Check the Allure report for detailed results including:
+            - Test execution timeline
+            - Step-by-step breakdown
+            - Screenshots (if any failures)
+            - Performance metrics
+            
+            *Report generated on Node.js ${{ matrix.node-version }}*`;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+          }
+        
   notify:
     runs-on: ubuntu-latest
     needs: test
@@ -75,10 +126,14 @@ jobs:
     steps:
     - name: Notify Success
       if: needs.test.result == 'success'
-      run: echo "✅ All tests passed successfully!"
+      run: |
+        echo "✅ All tests passed successfully!"
+        echo "📊 Allure reports have been generated and uploaded as artifacts"
+        echo "🌐 Live report will be available at: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}"
       
     - name: Notify Failure
       if: needs.test.result == 'failure'
       run: |
         echo "❌ Tests failed!"
-        echo "Check the test results in the Actions tab"
+        echo "📊 Check the Allure report artifacts for detailed failure analysis"
+        echo "🔍 View artifacts in the Actions tab: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

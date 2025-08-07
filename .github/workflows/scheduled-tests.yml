@@ -36,6 +36,21 @@ jobs:
       env:
         CI: true
         
+    - name: Install Allure CLI
+      if: always()
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y default-jre
+        curl -o allure-2.24.0.tgz -L https://github.com/allure-framework/allure2/releases/download/2.24.0/allure-2.24.0.tgz
+        tar -zxf allure-2.24.0.tgz
+        sudo mv allure-2.24.0 /opt/allure
+        sudo ln -s /opt/allure/bin/allure /usr/bin/allure
+        
+    - name: Generate Allure Report
+      if: always()
+      run: |
+        allure generate allure-results --clean --output allure-report
+        
     - name: Upload test results
       uses: actions/upload-artifact@v4
       if: always()
@@ -43,6 +58,7 @@ jobs:
         name: scheduled-test-results
         path: |
           allure-results/
+          allure-report/
           screenshots/
         retention-days: 7
         

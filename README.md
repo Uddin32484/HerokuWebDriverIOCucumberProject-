@@ -152,9 +152,69 @@ Located in `features/step-definitions/steps.js`:
 
 ## Reporting
 
-Test reports are generated in the `allure-results/` directory. To view detailed reports:
+### Allure Reports
 
-1. Install Allure globally:
+This project generates comprehensive Allure reports for test results:
+
+#### Local Development
+Generate and view reports locally:
+```bash
+# Generate report from test results
+npm run allure:generate
+
+# Open report in browser
+npm run allure:open
+
+# Or serve the report (alternative to open)
+npm run allure:serve
+```
+
+#### CI/CD Reports
+- **Artifacts**: Reports are automatically uploaded as artifacts in GitHub Actions
+- **GitHub Pages**: Live reports deployed to `https://YOUR_USERNAME.github.io/HerokuProjecctBDD`
+- **PR Comments**: Automatic comments with report links on pull requests
+
+#### Accessing Reports After Pipeline Execution
+
+1. **GitHub Pages (Main Branch)**:
+   - Visit: `https://YOUR_USERNAME.github.io/HerokuProjecctBDD`
+   - Updated automatically after each push to main
+
+2. **Download Artifacts**:
+   - Go to Actions tab → Select workflow run
+   - Download `allure-report-node-20.x` artifact
+   - Extract and open `index.html` in browser
+
+3. **Pull Request Reports**:
+   - Check PR comments for direct links
+   - Artifacts available in the workflow run
+
+#### What's Included in Allure Reports
+- ✅ **Test Execution Timeline**: Visual timeline of test runs
+- 📊 **Test Statistics**: Pass/fail rates, duration metrics
+- 🔍 **Step-by-Step Details**: Detailed breakdown of each test step
+- 📸 **Screenshots**: Automatic screenshots on failures
+- 📈 **Trends**: Historical test performance (when using GitHub Pages)
+- 🏷️ **Categories**: Organized by feature, severity, and test type
+
+#### Report Features
+- **Interactive Dashboard**: Click-through navigation
+- **Filtering**: Filter by status, feature, or tag
+- **Search**: Quick search across all test results
+- **Export**: Download results in multiple formats
+
+### Setting Up GitHub Pages for Reports
+
+1. Go to repository Settings → Pages
+2. Select "Deploy from a branch"
+3. Choose "gh-pages" branch
+4. Reports will be available at: `https://YOUR_USERNAME.github.io/REPO_NAME`
+
+### Legacy Reporting
+
+Test reports are also generated in the `allure-results/` directory. To view detailed reports:
+
+1. Install Allure globally (if not using npm scripts):
    ```bash
    npm install -g allure-commandline
    ```
